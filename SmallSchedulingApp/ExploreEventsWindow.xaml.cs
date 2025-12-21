@@ -41,11 +41,15 @@ namespace SmallSchedulingApp
                 MessageText.Text = "Loading events...";
 
                 var events = await _csvService.FetchExploreEventsAsync();
-                _allEvents = _csvService.FilterByDateRange(events);
+                System.Diagnostics.Debug.WriteLine($"Fetched {events.Count} events from CSV");
+
+                // Temporarily disable date filtering for testing
+                _allEvents = events; // _csvService.FilterByDateRange(events);
+                System.Diagnostics.Debug.WriteLine($"After date filtering: {_allEvents.Count} events");
 
                 if (_allEvents.Count == 0)
                 {
-                    MessageText.Text = "No events found. Using default CSV URL.";
+                    MessageText.Text = $"No events found. Fetched {events.Count} total, 0 after filtering.";
                 }
                 else
                 {
@@ -57,6 +61,7 @@ namespace SmallSchedulingApp
             catch (Exception ex)
             {
                 MessageText.Text = $"Error loading events: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"Error in LoadEventsAsync: {ex}");
             }
         }
 
@@ -86,7 +91,10 @@ namespace SmallSchedulingApp
 
         private void ApplyFilter(string tag)
         {
+            System.Diagnostics.Debug.WriteLine($"Applying filter: {tag}");
             _filteredEvents = _csvService.FilterByTag(_allEvents, tag);
+            System.Diagnostics.Debug.WriteLine($"Filtered events count: {_filteredEvents.Count}");
+
             EventsItemsControl.ItemsSource = _filteredEvents;
 
             if (_filteredEvents.Count == 0 && _allEvents.Count > 0)

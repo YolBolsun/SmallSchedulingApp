@@ -27,12 +27,14 @@ namespace SmallSchedulingApp.Services
             try
             {
                 var csvContent = await _httpClient.GetStringAsync(_csvUrl);
-                return ParseCsv(csvContent);
+                var result = ParseCsv(csvContent);
+                return result;
             }
-            catch
+            catch (Exception ex)
             {
-                // Return empty list if fetch fails
-                return new List<ExploreEvent>();
+                // Log the error for debugging
+                System.Diagnostics.Debug.WriteLine($"Error fetching CSV: {ex.Message}");
+                throw; // Re-throw to let caller handle
             }
         }
 
@@ -41,54 +43,73 @@ namespace SmallSchedulingApp.Services
             var events = new List<ExploreEvent>();
             var lines = csvContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
+            System.Diagnostics.Debug.WriteLine($"Total lines in CSV: {lines.Length}");
+
             // Skip header row
             for (int i = 1; i < lines.Length; i++)
             {
-                var line = lines[i];
-                var values = ParseCsvLine(line);
-
-                if (values.Count < 6) continue; // Need at least Name, Summary, Image, StartDate, Frequency, Count
-
-                var exploreEvent = new ExploreEvent
+                try
                 {
-                    Name = values[0],
-                    Summary = values[1],
-                    ImageUrl = values[2],
-                    Count = int.TryParse(values[5], out var count) ? count : 1
-                };
+                    var line = lines[i];
+                    System.Diagnostics.Debug.WriteLine($"Parsing line {i}: {line}");
 
-                // Parse start date
-                if (DateTime.TryParse(values[3], out var startDate))
-                {
-                    exploreEvent.StartDate = startDate;
-                }
-                else
-                {
-                    continue; // Skip events with invalid dates
-                }
+                    var values = ParseCsvLine(line);
+                    System.Diagnostics.Debug.WriteLine($"Parsed {values.Count} values");
 
-                // Parse frequency
-                exploreEvent.Frequency = values[4].ToLower() switch
-                {
-                    "daily" => EventFrequency.Daily,
-                    "weekly" => EventFrequency.Weekly,
-                    "bi-weekly" or "biweekly" => EventFrequency.BiWeekly,
-                    "monthly" => EventFrequency.Monthly,
-                    _ => EventFrequency.Daily
-                };
-
-                // Parse tags (Tag1, Tag2, Tag3)
-                for (int j = 6; j < values.Count && j < 9; j++)
-                {
-                    if (!string.IsNullOrWhiteSpace(values[j]))
+                    if (values.Count < 6)
                     {
-                        exploreEvent.Tags.Add(values[j].Trim());
+                        System.Diagnostics.Debug.WriteLine($"Skipping line {i}: Not enough values ({values.Count})");
+                        continue;
                     }
-                }
 
-                events.Add(exploreEvent);
+                    var exploreEvent = new ExploreEvent
+                    {
+                        Name = values[0].Trim(),
+                        Summary = values[1].Trim(),
+                        ImageUrl = values[2].Trim(),
+                        Count = int.TryParse(values[5], out var count) ? count : 1
+                    };
+
+                    // Parse start date
+                    if (DateTime.TryParse(values[3], out var startDate))
+                    {
+                        exploreEvent.StartDate = startDate;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Skipping line {i}: Invalid date '{values[3]}'");
+                        continue;
+                    }
+
+                    // Parse frequency
+                    exploreEvent.Frequency = values[4].Trim().ToLower() switch
+                    {
+                        "daily" => EventFrequency.Daily,
+                        "weekly" => EventFrequency.Weekly,
+                        "bi-weekly" or "biweekly" => EventFrequency.BiWeekly,
+                        "monthly" => EventFrequency.Monthly,
+                        _ => EventFrequency.Daily
+                    };
+
+                    // Parse tags (Tag1, Tag2, Tag3)
+                    for (int j = 6; j < values.Count && j < 9; j++)
+                    {
+                        if (!string.IsNullOrWhiteSpace(values[j]))
+                        {
+                            exploreEvent.Tags.Add(values[j].Trim());
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"Successfully parsed event: {exploreEvent.Name}");
+                    events.Add(exploreEvent);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error parsing line {i}: {ex.Message}");
+                }
             }
 
+            System.Diagnostics.Debug.WriteLine($"Total events parsed: {events.Count}");
             return events;
         }
 
@@ -104,6 +125,7 @@ namespace SmallSchedulingApp.Services
 
                 if (c == '"')
                 {
+                    // Toggle quote state, but don't add the quote to the value
                     insideQuotes = !insideQuotes;
                 }
                 else if (c == ',' && !insideQuotes)
@@ -120,6 +142,7 @@ namespace SmallSchedulingApp.Services
             // Add the last value
             values.Add(currentValue.Trim());
 
+            System.Diagnostics.Debug.WriteLine($"ParseCsvLine result: {string.Join(" | ", values)}");
             return values;
         }
 
@@ -137,12 +160,22 @@ namespace SmallSchedulingApp.Services
         /// </summary>
         public List<ExploreEvent> FilterByTag(List<ExploreEvent> events, string tag)
         {
+            System.Diagnostics.Debug.WriteLine($"FilterByTag called with tag: '{tag}', event count: {events.Count}");
+
             if (string.IsNullOrWhiteSpace(tag) || tag.ToLower() == "all")
             {
+                System.Diagnostics.Debug.WriteLine($"Returning all {events.Count} events (no filter)");
                 return events;
             }
 
-            return events.Where(e => e.Tags.Any(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase))).ToList();
+            foreach (var evt in events)
+            {
+                System.Diagnostics.Debug.WriteLine($"Event '{evt.Name}' has tags: {string.Join(", ", evt.Tags)}");
+            }
+
+            var filtered = events.Where(e => e.Tags.Any(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase))).ToList();
+            System.Diagnostics.Debug.WriteLine($"FilterByTag returning {filtered.Count} events");
+            return filtered;
         }
     }
 }
