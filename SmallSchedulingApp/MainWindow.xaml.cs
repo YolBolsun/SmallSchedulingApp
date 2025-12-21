@@ -327,6 +327,12 @@ namespace SmallSchedulingApp
             }
         }
 
+        private void ExploreEvent_Click(object sender, RoutedEventArgs e)
+        {
+            var exploreWindow = new ExploreEventsWindow(_eventService);
+            exploreWindow.Activate();
+        }
+
         public void SetSystemTrayHelper(SystemTrayHelper helper)
         {
             _systemTrayHelper = helper;

@@ -103,8 +103,7 @@
                     FontSize="14"/>
             <Button x:Name="ExploreEventButton"
                     Content="Explore Event"
-                    IsEnabled="False"
-                    ToolTipService.ToolTip="Coming in a future version"
+                    Click="ExploreEvent_Click"
                     MinWidth="120"
                     Height="36"
                     FontSize="14"/>
