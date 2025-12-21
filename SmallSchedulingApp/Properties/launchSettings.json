@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SmallSchedulingApp (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "SmallSchedulingApp (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
