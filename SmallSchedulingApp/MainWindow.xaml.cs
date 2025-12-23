@@ -200,8 +200,7 @@ namespace SmallSchedulingApp
                 // Create flyout with event list (supports interactive content)
                 var flyoutContent = new StackPanel
                 {
-                    Spacing = 10,
-                    MinWidth = 240,
+                    Spacing = 8,
                     Padding = new Thickness(8)
                 };
 
@@ -218,8 +217,7 @@ namespace SmallSchedulingApp
                         Text = evt.EventName,
                         FontSize = 14,
                         VerticalAlignment = VerticalAlignment.Center,
-                        TextWrapping = TextWrapping.Wrap,
-                        MaxWidth = 180
+                        TextWrapping = TextWrapping.NoWrap
                     };
 
                     var deleteButton = new Button
