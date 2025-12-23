@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-      Solution_Name: SmallSchedulingApp.sln
+      Solution_Name: SmallSchedulingApp\SmallSchedulingApp.sln
       Project_Path: SmallSchedulingApp\SmallSchedulingApp.csproj
 
     steps:
