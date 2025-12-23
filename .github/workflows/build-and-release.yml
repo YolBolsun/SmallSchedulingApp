@@ -47,11 +47,14 @@ jobs:
     - name: Build MSIX package
       run: |
         msbuild ${{ env.Project_Path }} `
+          /t:Build `
+          /t:Publish `
           /p:Configuration=Release `
           /p:Platform=x64 `
           /p:RuntimeIdentifier=win-x64 `
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
+          /p:GenerateAppxPackageOnBuild=true `
           /p:AppxPackageSigningEnabled=true `
           /p:PackageCertificateKeyFile="$env:GITHUB_WORKSPACE\SmallSchedulingApp.pfx" `
           /p:PackageCertificatePassword="password123" `
@@ -61,7 +64,8 @@ jobs:
     - name: Find MSIX package
       id: find-msix
       run: |
-        $msixPath = Get-ChildItem -Path "SmallSchedulingApp\bin\Release" -Filter "*.msix" -Recurse | Select-Object -First 1
+        Write-Output "Searching for MSIX in SmallSchedulingApp directory..."
+        $msixPath = Get-ChildItem -Path "SmallSchedulingApp" -Filter "*.msix" -Recurse | Select-Object -First 1
         if ($msixPath) {
           $msixFullPath = $msixPath.FullName
           $msixDir = $msixPath.Directory.FullName
