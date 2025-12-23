@@ -51,54 +51,64 @@
                                 Padding="12"
                                 Margin="8"
                                 Width="250"
+                                Height="480"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                            <StackPanel Spacing="8">
-                                <!-- Event Image -->
-                                <Image Source="{Binding ImageUrl}"
-                                       MaxWidth="200"
-                                       MaxHeight="200"
-                                       Stretch="Uniform"
-                                       HorizontalAlignment="Center"/>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <!-- Scrollable content -->
+                                    <RowDefinition Height="Auto"/>
+                                    <!-- Button -->
+                                </Grid.RowDefinitions>
 
-                                <!-- Event Name -->
-                                <TextBlock Text="{Binding Name}"
-                                           FontSize="16"
-                                           FontWeight="SemiBold"
-                                           TextWrapping="Wrap"
-                                           MaxHeight="50"
-                                           TextTrimming="CharacterEllipsis"/>
+                                <!-- Scrollable Content -->
+                                <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Spacing="8">
+                                        <!-- Event Image -->
+                                        <Image Source="{Binding ImageUrl}"
+                                               MaxWidth="200"
+                                               MaxHeight="200"
+                                               Stretch="Uniform"
+                                               HorizontalAlignment="Center"/>
 
-                                <!-- Event Summary (scrollable) -->
-                                <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto">
-                                    <TextBlock Text="{Binding Summary}"
-                                               FontSize="12"
-                                               TextWrapping="Wrap"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <!-- Event Name -->
+                                        <TextBlock Text="{Binding Name}"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"/>
+
+                                        <!-- Event Summary -->
+                                        <TextBlock Text="{Binding Summary}"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+                                        <!-- Event Details -->
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="{Binding StartDate}"
+                                                       FontSize="11"
+                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                            <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                                <Run Text="Frequency: "/>
+                                                <Run Text="{Binding Frequency}"/>
+                                            </TextBlock>
+                                            <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                                <Run Text="Occurrences: "/>
+                                                <Run Text="{Binding Count}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
                                 </ScrollViewer>
 
-                                <!-- Event Details -->
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="{Binding StartDate}"
-                                               FontSize="11"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                    <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
-                                        <Run Text="Frequency: "/>
-                                        <Run Text="{Binding Frequency}"/>
-                                    </TextBlock>
-                                    <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
-                                        <Run Text="Occurrences: "/>
-                                        <Run Text="{Binding Count}"/>
-                                    </TextBlock>
-                                </StackPanel>
-
-                                <!-- Add Event Button -->
-                                <Button Content="Add to Calendar"
+                                <!-- Add Event Button (Always visible at bottom) -->
+                                <Button Grid.Row="1"
+                                        Content="Add to Calendar"
                                         HorizontalAlignment="Stretch"
                                         Click="AddEventButton_Click"
                                         Tag="{Binding}"
                                         Style="{StaticResource AccentButtonStyle}"
                                         Margin="0,8,0,0"/>
-                            </StackPanel>
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
