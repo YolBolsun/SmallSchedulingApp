@@ -40,12 +40,8 @@ namespace SmallSchedulingApp
             // Set the system tray helper in the window so it can handle messages
             _window.SetSystemTrayHelper(_systemTrayHelper);
 
-            // Handle cleanup when window is actually closed
-            _window.Closed += (s, e) =>
-            {
-                _systemTrayHelper?.Dispose();
-                DatabaseService.Instance.Dispose();
-            };
+            // Note: Don't dispose system tray on window.Closed because we prevent closing with args.Handled = true
+            // Cleanup will happen when the app process actually exits
         }
     }
 }
