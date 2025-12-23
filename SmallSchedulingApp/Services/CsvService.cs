@@ -45,7 +45,7 @@ namespace SmallSchedulingApp.Services
 
             System.Diagnostics.Debug.WriteLine($"Total lines in CSV: {lines.Length}");
 
-            // Skip header row
+            // Skip header row (Title, Summary, Start_Date, Frequency, Count, Type, Genres, Title_Card_Img)
             for (int i = 1; i < lines.Length; i++)
             {
                 try
@@ -56,7 +56,7 @@ namespace SmallSchedulingApp.Services
                     var values = ParseCsvLine(line);
                     System.Diagnostics.Debug.WriteLine($"Parsed {values.Count} values");
 
-                    if (values.Count < 6)
+                    if (values.Count < 5)
                     {
                         System.Diagnostics.Debug.WriteLine($"Skipping line {i}: Not enough values ({values.Count})");
                         continue;
@@ -64,25 +64,25 @@ namespace SmallSchedulingApp.Services
 
                     var exploreEvent = new ExploreEvent
                     {
-                        Name = values[0].Trim(),
-                        Summary = values[1].Trim(),
-                        ImageUrl = values[2].Trim(),
-                        Count = int.TryParse(values[5], out var count) ? count : 1
+                        Name = values[0].Trim(),                    // Title
+                        Summary = values[1].Trim(),                  // Summary
+                        ImageUrl = values.Count > 7 ? values[7].Trim() : "", // Title_Card_Img
+                        Count = int.TryParse(values[4], out var count) ? count : 1 // Count
                     };
 
-                    // Parse start date
-                    if (DateTime.TryParse(values[3], out var startDate))
+                    // Parse start date (column 2)
+                    if (DateTime.TryParse(values[2], out var startDate))
                     {
                         exploreEvent.StartDate = startDate;
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"Skipping line {i}: Invalid date '{values[3]}'");
+                        System.Diagnostics.Debug.WriteLine($"Skipping line {i}: Invalid date '{values[2]}'");
                         continue;
                     }
 
-                    // Parse frequency
-                    exploreEvent.Frequency = values[4].Trim().ToLower() switch
+                    // Parse frequency (column 3)
+                    exploreEvent.Frequency = values[3].Trim().ToLower() switch
                     {
                         "daily" => EventFrequency.Daily,
                         "weekly" => EventFrequency.Weekly,
@@ -91,12 +91,19 @@ namespace SmallSchedulingApp.Services
                         _ => EventFrequency.Daily
                     };
 
-                    // Parse tags (Tag1, Tag2, Tag3)
-                    for (int j = 6; j < values.Count && j < 9; j++)
+                    // Parse Type (column 5) and add to tags
+                    if (values.Count > 5 && !string.IsNullOrWhiteSpace(values[5]))
                     {
-                        if (!string.IsNullOrWhiteSpace(values[j]))
+                        exploreEvent.Tags.Add(values[5].Trim());
+                    }
+
+                    // Parse Genres (column 6) - could be semicolon or comma separated
+                    if (values.Count > 6 && !string.IsNullOrWhiteSpace(values[6]))
+                    {
+                        var genres = values[6].Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var genre in genres)
                         {
-                            exploreEvent.Tags.Add(values[j].Trim());
+                            exploreEvent.Tags.Add(genre.Trim());
                         }
                     }
 
