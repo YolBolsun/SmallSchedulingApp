@@ -49,11 +49,13 @@ jobs:
         msbuild ${{ env.Project_Path }} `
           /p:Configuration=Release `
           /p:Platform=x64 `
+          /p:RuntimeIdentifier=win-x64 `
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
           /p:AppxPackageSigningEnabled=true `
           /p:PackageCertificateKeyFile="$env:GITHUB_WORKSPACE\SmallSchedulingApp.pfx" `
-          /p:PackageCertificatePassword="password123"
+          /p:PackageCertificatePassword="password123" `
+          /p:PublishReadyToRun=false
       shell: pwsh
 
     - name: Find MSIX package
