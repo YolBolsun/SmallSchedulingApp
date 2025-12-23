@@ -1,0 +1,188 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0, v1.0.1, etc.
+  workflow_dispatch:  # Allows manual trigger from Actions tab
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    env:
+      Solution_Name: SmallSchedulingApp.sln
+      Project_Path: SmallSchedulingApp\SmallSchedulingApp.csproj
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Restore NuGet packages
+      run: dotnet restore ${{ env.Solution_Name }}
+
+    - name: Create self-signed certificate
+      run: |
+        $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=SmallSchedulingApp" -KeyUsage DigitalSignature -FriendlyName "SmallSchedulingApp" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+        $password = ConvertTo-SecureString -String "password123" -Force -AsPlainText
+        Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath SmallSchedulingApp.pfx -Password $password
+        Write-Output "Certificate created and exported"
+      shell: pwsh
+
+    - name: Decode and import certificate
+      run: |
+        $pfxPath = Join-Path $env:GITHUB_WORKSPACE "SmallSchedulingApp.pfx"
+        $password = ConvertTo-SecureString -String "password123" -Force -AsPlainText
+        Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password
+      shell: pwsh
+
+    - name: Build MSIX package
+      run: |
+        msbuild ${{ env.Project_Path }} `
+          /p:Configuration=Release `
+          /p:Platform=x64 `
+          /p:UapAppxPackageBuildMode=SideloadOnly `
+          /p:AppxBundle=Never `
+          /p:AppxPackageSigningEnabled=true `
+          /p:PackageCertificateKeyFile="$env:GITHUB_WORKSPACE\SmallSchedulingApp.pfx" `
+          /p:PackageCertificatePassword="password123"
+      shell: pwsh
+
+    - name: Find MSIX package
+      id: find-msix
+      run: |
+        $msixPath = Get-ChildItem -Path "SmallSchedulingApp\bin\Release" -Filter "*.msix" -Recurse | Select-Object -First 1
+        if ($msixPath) {
+          $msixFullPath = $msixPath.FullName
+          $msixDir = $msixPath.Directory.FullName
+          echo "msix_path=$msixFullPath" >> $env:GITHUB_OUTPUT
+          echo "msix_dir=$msixDir" >> $env:GITHUB_OUTPUT
+          echo "msix_name=$($msixPath.Name)" >> $env:GITHUB_OUTPUT
+          Write-Output "Found MSIX: $msixFullPath"
+        } else {
+          Write-Error "MSIX package not found"
+          exit 1
+        }
+      shell: pwsh
+
+    - name: Export certificate for distribution
+      run: |
+        $cert = Get-ChildItem -Path Cert:\CurrentUser\My | Where-Object { $_.Subject -eq "CN=SmallSchedulingApp" } | Select-Object -First 1
+        Export-Certificate -Cert $cert -FilePath SmallSchedulingApp.cer
+        Write-Output "Certificate exported for distribution"
+      shell: pwsh
+
+    - name: Create installation script
+      run: |
+        $installScript = @'
+        # SmallSchedulingApp Installation Script
+        Write-Host "Installing SmallSchedulingApp..." -ForegroundColor Green
+
+        # Check if running as administrator
+        $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+        if (-not $isAdmin) {
+            Write-Host "Please run this script as Administrator to install the certificate." -ForegroundColor Yellow
+            Write-Host "Right-click PowerShell and select 'Run as Administrator', then run this script again." -ForegroundColor Yellow
+            pause
+            exit
+        }
+
+        # Install certificate
+        Write-Host "Installing certificate..." -ForegroundColor Cyan
+        $certPath = Join-Path $PSScriptRoot "SmallSchedulingApp.cer"
+        Import-Certificate -FilePath $certPath -CertStoreLocation Cert:\LocalMachine\Root
+
+        # Install MSIX
+        Write-Host "Installing application..." -ForegroundColor Cyan
+        $msixPath = Get-ChildItem -Path $PSScriptRoot -Filter "*.msix" | Select-Object -First 1
+        Add-AppxPackage -Path $msixPath.FullName
+
+        Write-Host "Installation complete!" -ForegroundColor Green
+        Write-Host "You can now find SmallSchedulingApp in your Start Menu." -ForegroundColor Green
+        pause
+        '@
+        $installScript | Out-File -FilePath "Install.ps1" -Encoding UTF8
+      shell: pwsh
+
+    - name: Create README for release
+      run: |
+        $readme = @'
+        # SmallSchedulingApp Installation
+
+        ## Installation Instructions
+
+        ### Method 1: Using Installation Script (Recommended)
+        1. Download all files from this release
+        2. Right-click `Install.ps1` and select "Run with PowerShell"
+        3. If prompted, allow the script to run as Administrator
+        4. The app will be installed and available in your Start Menu
+
+        ### Method 2: Manual Installation
+        1. Download `SmallSchedulingApp.cer` and `SmallSchedulingApp_x.x.x_x64.msix`
+        2. Right-click `SmallSchedulingApp.cer` → Install Certificate
+        3. Choose "Local Machine" → Next
+        4. Select "Place all certificates in the following store" → Browse → "Trusted Root Certification Authorities"
+        5. Click OK → Next → Finish
+        6. Double-click the `.msix` file to install
+
+        ### Method 3: Developer Mode (No Certificate Required)
+        1. Enable Developer Mode in Windows Settings → Update & Security → For Developers
+        2. Double-click the `.msix` file to install
+
+        ## Uninstallation
+        - Go to Windows Settings → Apps → Find "SmallSchedulingApp" → Uninstall
+
+        ## System Requirements
+        - Windows 10 version 1809 (build 17763) or later
+        - Windows 11 (all versions)
+        '@
+        $readme | Out-File -FilePath "INSTALLATION.md" -Encoding UTF8
+      shell: pwsh
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: SmallSchedulingApp-Package
+        path: |
+          ${{ steps.find-msix.outputs.msix_path }}
+          SmallSchedulingApp.cer
+          Install.ps1
+          INSTALLATION.md
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ${{ steps.find-msix.outputs.msix_path }}
+          SmallSchedulingApp.cer
+          Install.ps1
+          INSTALLATION.md
+        body: |
+          ## SmallSchedulingApp Release
+
+          Download the files below and follow the installation instructions in `INSTALLATION.md`.
+
+          ### Quick Start:
+          1. Download all files
+          2. Run `Install.ps1` as Administrator
+          3. Find SmallSchedulingApp in your Start Menu
+
+          ### What's Included:
+          - `.msix` - Application installer
+          - `.cer` - Security certificate (required for installation)
+          - `Install.ps1` - Automated installation script
+          - `INSTALLATION.md` - Detailed installation instructions
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
