@@ -44,10 +44,9 @@ jobs:
 
         Write-Output "Certificate created with thumbprint: $($cert.Thumbprint)"
 
-        # Export with password
-        $password = ConvertTo-SecureString -String "password123" -Force -AsPlainText
+        # Export without password for easier MSBuild access
         $pfxPath = Join-Path $env:GITHUB_WORKSPACE "SmallSchedulingApp.pfx"
-        Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath $pfxPath -Password $password
+        Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath $pfxPath -Password (New-Object System.Security.SecureString)
 
         Write-Output "Certificate exported to: $pfxPath"
 
@@ -72,7 +71,6 @@ jobs:
           /p:GenerateAppxPackageOnBuild=true `
           /p:AppxPackageSigningEnabled=true `
           /p:PackageCertificateKeyFile="$pfxPath" `
-          /p:PackageCertificatePassword="password123" `
           /p:PublishReadyToRun=false
       shell: pwsh
 
